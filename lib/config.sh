@@ -11,7 +11,16 @@ _BOOTSTRAP_DEFAULTS=(
   "ADMIN_USER=admin"
   "DEPLOY_USER=deploy"
   "AGENT_USER=agent"
+  "DEPLOY_SUDO_RESTRICTED=true"
+  "DEPLOY_SSH_ENABLED=false"
   "SSH_PORT=22"
+  "SRV_ROOT=/srv"
+  "GIT_DEFAULT_BRANCH=main"
+  "GIT_USER_NAME="
+  "GIT_USER_EMAIL="
+  "ENABLE_ZSH=true"
+  "ENABLE_STARSHIP=true"
+  "ENABLE_TMUX=true"
   "ENABLE_PODMAN=true"
   "ENABLE_DOCKER=false"
   "ENABLE_OPENCLAW=true"
@@ -34,7 +43,8 @@ _BOOTSTRAP_DEFAULTS=(
   "SSH_PUBLIC_KEYS="
 )
 
-bootstrap_config_load() {
+bootstrap_config_load()
+{
   local path="${BOOTSTRAP_CONFIG:-$BOOTSTRAP_ROOT/bootstrap.conf}"
   if [[ ! -r "$path" ]]; then
     log_warn "config file not readable: $path (using defaults)"
@@ -69,15 +79,21 @@ bootstrap_config_load() {
   fi
 }
 
-bootstrap_config_summary() {
+bootstrap_config_summary()
+{
   log_debug "config: HOSTNAME=${HOSTNAME:-} TIMEZONE=${TIMEZONE:-} ADMIN_USER=${ADMIN_USER:-}"
 }
 
 # Convenience: resolve a boolean config key. Returns 0 (true) or 1 (false).
-bootstrap_config_bool() {
-  local key="$1" val="${!key:-}"
+bootstrap_config_bool()
+{
+  local key="$1"
+  local val=""
+  if [[ -n "$key" ]]; then
+    val="${!key:-}"
+  fi
   case "${val,,}" in
-    1|true|yes|on) return 0 ;;
+    1 | true | yes | on) return 0 ;;
     *) return 1 ;;
   esac
 }

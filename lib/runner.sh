@@ -4,7 +4,8 @@
 set -Eeuo pipefail
 
 # _module_id_from_filename FILE  → "10-base"
-_module_id_from_filename() {
+_module_id_from_filename()
+{
   local f="$1" bn
   bn="$(basename -- "$f")"
   bn="${bn%.sh}"
@@ -13,20 +14,23 @@ _module_id_from_filename() {
 
 # _module_function_name ID SUFFIX  → "mod_10_base_description"
 # Replaces dashes with underscores for valid bash identifiers.
-_module_function_name() {
+_module_function_name()
+{
   local id="$1" suffix="$2"
   local safe="${id//-/_}"
   printf 'mod_%s_%s\n' "$safe" "$suffix"
 }
 
 # _module_required_functions  → echoes the list of required function suffixes.
-_module_required_functions() {
+_module_required_functions()
+{
   printf '%s\n' description stage dependencies check install validate rollback
 }
 
 # Discover modules in $BOOTSTRAP_MODULES, sorted by NN prefix.
 # Echoes module IDs, one per line.
-runner_discover_modules() {
+runner_discover_modules()
+{
   local f id
   for f in "$BOOTSTRAP_MODULES"/*.sh; do
     [[ -e "$f" ]] || continue
@@ -41,7 +45,8 @@ runner_discover_modules() {
 
 # Load (source) every module file directly from the modules directory.
 # Idempotent: skips files without a NN- prefix and dedupes by ID.
-runner_load_modules() {
+runner_load_modules()
+{
   local -A seen=()
   local f id
   for f in "$BOOTSTRAP_MODULES"/*.sh; do
@@ -51,7 +56,10 @@ runner_load_modules() {
       log_warn "skipping module without NN- prefix: $f"
       continue
     fi
-    [[ -n "${seen[$id]:-}" ]] && { log_warn "duplicate module id: $id"; continue; }
+    [[ -n "${seen[$id]:-}" ]] && {
+      log_warn "duplicate module id: $id"
+      continue
+    }
     seen[$id]=1
     # shellcheck disable=SC1090
     . "$f"
@@ -60,7 +68,8 @@ runner_load_modules() {
 }
 
 # Validate that all required functions are defined for every module.
-runner_validate_module_api() {
+runner_validate_module_api()
+{
   local -A seen=()
   local f id fn suf missing=0
   for f in "$BOOTSTRAP_MODULES"/*.sh; do
@@ -87,7 +96,8 @@ runner_validate_module_api() {
 # _module_dependencies ID  → space-separated dep IDs (resolved by sourcing the module's
 # mod_NN_dependencies() function — but the runner sources all modules first, so this is just
 # a function call).
-_module_dependencies() {
+_module_dependencies()
+{
   local id="$1"
   local fn
   fn="$(_module_function_name "$id" "dependencies")"
@@ -95,7 +105,8 @@ _module_dependencies() {
 }
 
 # Topological sort using a pure-Bash implementation (fallback if python3 is absent).
-runner_toposort_bash() {
+runner_toposort_bash()
+{
   local id
   local ids=()
   while read -r id; do
@@ -107,34 +118,35 @@ runner_toposort_bash() {
     DEP[$id]="$(_module_dependencies "$id")"
   done
   local placed=0 placed_max=${#ids[@]}
-  declare -A DONE
+  declare -A PLACED
   local pass=0
-  while (( placed < placed_max )); do
-    (( pass++ )) || true
-    if (( pass > placed_max + 5 )); then
+  while ((placed < placed_max)); do
+    ((pass++)) || true
+    if ((pass > placed_max + 5)); then
       log_error "dependency cycle detected"
       return 1
     fi
     for id in "${ids[@]}"; do
-      [[ -n "${DONE[$id]:-}" ]] && continue
+      [[ -n "${PLACED[$id]:-}" ]] && continue
       local ready=1 d
       for d in ${DEP[$id]}; do
-        if [[ -z "${DONE[$d]:-}" ]] && [[ " ${ids[*]} " == *" $d "* ]]; then
+        if [[ -z "${PLACED[$d]:-}" ]] && [[ " ${ids[*]} " == *" $d "* ]]; then
           ready=0
           break
         fi
       done
-      if (( ready )); then
+      if ((ready)); then
         printf '%s\n' "$id"
-        DONE[$id]=1
-        placed=$((placed+1))
+        PLACED[$id]=1
+        placed=$((placed + 1))
       fi
     done
   done
 }
 
 # Run a single module end to end.
-runner_run_module() {
+runner_run_module()
+{
   local id="$1"
   local fn desc stage
   fn="$(_module_function_name "$id" "description")"
@@ -166,14 +178,14 @@ runner_run_module() {
 
   fn="$(_module_function_name "$id" "check")"
   local check_rc=0
-  if (( BOOTSTRAP_FORCE )); then
+  if ((BOOTSTRAP_FORCE)); then
     check_rc=1
     log_debug "force mode: ignoring check()"
   else
     "$fn" || check_rc=$?
   fi
 
-  if (( check_rc == 0 )); then
+  if ((check_rc == 0)); then
     log_debug "$id already satisfied; skipping install"
   else
     fn="$(_module_function_name "$id" "install")"
@@ -193,13 +205,18 @@ runner_run_module() {
       return 1
     fi
   fi
-  runner_record_state "$id" "ok"
+  # Only auto-record if the module didn't record its own status (e.g. 20-users
+  # records 'awaiting_admin_validation' then 'admin_validated' to gate stage 2).
+  if [[ ! -f "$BOOTSTRAP_STATE/${id}.state" ]]; then
+    runner_record_state "$id" "ok"
+  fi
   log_success "$id done"
 }
 
-runner_record_state() {
+runner_record_state()
+{
   local id="$1" status="$2"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   local path="$BOOTSTRAP_STATE/${id}.state"
@@ -209,14 +226,15 @@ runner_record_state() {
   if [[ -d "$BOOTSTRAP_MODULES" ]]; then
     checksum="$(sha256sum "$BOOTSTRAP_MODULES/${id}.sh" | awk '{print $1}')"
   fi
-  cat > "$path" <<EOF
+  cat >"$path" <<EOF
 status=${status}
 installed_at=${ts}
 module_checksum=${checksum}
 EOF
 }
 
-runner_safety_prerequisite() {
+runner_safety_prerequisite()
+{
   # Required state file from the users module, with status=awaiting_admin_validation cleared
   # by a second-terminal reconnect.
   local f="$BOOTSTRAP_STATE/20-users.state"
@@ -226,23 +244,37 @@ runner_safety_prerequisite() {
   [[ "$status" == "admin_validated" ]]
 }
 
-runner_preflight() {
+runner_preflight()
+{
   bootstrap_system_supported || return 1
   bootstrap_system_require_root || return 1
   log_info "distro=$(bootstrap_system_distro) version=$(bootstrap_system_version) arch=$(bootstrap_system_arch)"
-  net_wait_online 30 || { log_error "no internet after 30s"; return 1; }
-  net_dns_resolves deb.debian.org || net_dns_resolves archive.ubuntu.com \
-    || { log_error "DNS resolution failed"; return 1; }
+  net_wait_online 30 || {
+    log_error "no internet after 30s"
+    return 1
+  }
+  net_dns_resolves deb.debian.org || net_dns_resolves archive.ubuntu.com ||
+    {
+      log_error "DNS resolution failed"
+      return 1
+    }
   local disk
   disk="$(df --output=avail -BG / | awk 'NR==2 {gsub("G",""); print $1}')"
-  (( disk >= 5 )) || { log_error "less than 5 GiB free on /"; return 1; }
+  ((disk >= 5)) || {
+    log_error "less than 5 GiB free on /"
+    return 1
+  }
   local mem
   mem="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)"
-  (( mem >= 1024 )) || { log_error "less than 1 GiB RAM"; return 1; }
+  ((mem >= 1024)) || {
+    log_error "less than 1 GiB RAM"
+    return 1
+  }
   log_success "preflight ok (free disk >=${disk}G, RAM ${mem}MiB)"
 }
 
-runner_run_all() {
+runner_run_all()
+{
   bootstrap_log_init
   bootstrap_config_load
   bootstrap_config_summary
@@ -259,12 +291,15 @@ runner_run_all() {
 
   runner_load_modules || return 1
   runner_validate_module_api || return 1
-  echo "test" > /dev/null
+  echo "test" >/dev/null
 
   # Sort
   local ordered
   ordered="$(printf '%s\n' "$ids" | runner_toposort_bash)"
-  [[ -z "$ordered" ]] && { log_error "toposort failed"; return 1; }
+  [[ -z "$ordered" ]] && {
+    log_error "toposort failed"
+    return 1
+  }
 
   log_step "execution plan:"
   while read -r id; do
@@ -280,13 +315,14 @@ runner_run_all() {
     fi
   done <<<"$ordered"
 
-  if (( rc == 0 )); then
+  if ((rc == 0)); then
     log_done "bootstrap complete"
   fi
   return "$rc"
 }
 
-runner_rollback_all() {
+runner_rollback_all()
+{
   local target="${1:-}"
   bootstrap_log_init
   if [[ -n "$target" ]]; then

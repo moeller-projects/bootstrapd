@@ -10,89 +10,16 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint (shellcheck + shfmt)
+  ci:
+    name: Pipelines (lint, test, doctor, docs, yml)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
-
-      - name: Install shfmt
-        run: |
-          SHFMT_VERSION=3.10.0
-          curl -fsSL "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64" \
-            -o /usr/local/bin/shfmt
-          sudo chmod +x /usr/local/bin/shfmt
-
-      - name: shellcheck
+      - name: Run pipelines
         run: |
           set -e
-          find . -name '*.sh' -not -path './.git/*' -print0 \
-            | xargs -0 -n1 shellcheck --severity=warning --shell=bash
-
-      - name: shfmt (check)
-        run: |
-          set -e
-          shfmt -d -i 2 -ci -fn \
-            bootstrap.sh \
-            $(find lib modules tests -name '*.sh' -not -path './.git/*')
-
-  test:
-    name: Tests (bats)
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install bats + shellcheck
-        run: |
+          chmod +x pipelines/*.sh
           sudo apt-get update
-          sudo apt-get install -y shellcheck bats
-
-      - name: bats
-        run: |
-          set -e
-          bats tests/
-
-  doctor-smoke:
-    name: Doctor (smoke test on a real Ubuntu runner)
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: bootstrap doctor
-        run: |
-          sudo ./bootstrap.sh doctor --json | tee state/doctor.json || true
-          [[ -s state/doctor.json ]] || { echo "doctor produced no JSON"; exit 1; }
-
-  markdown-lint:
-    name: Markdown lint
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install markdownlint-cli
-        run: |
-          sudo npm install -g markdownlint-cli
-
-      - name: Lint
-        run: |
-          markdownlint --config .markdownlint.jsonc '**/*.md'
-
-  yaml-lint:
-    name: YAML lint
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install yamllint
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y yamllint
-
-      - name: Lint
-        run: |
-          yamllint -d '{extends: default, rules: {line-length: disable}}' .github/workflows
+          sudo apt-get install -y python3
+          ./pipelines/ci.sh

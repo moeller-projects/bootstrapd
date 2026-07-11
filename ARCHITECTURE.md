@@ -1,15 +1,15 @@
 # Architecture
 
-BootstrapX is intentionally small. The whole framework is one entry script, twelve libraries, and a directory of self-describing modules.
+BootstrapX is a small declarative configuration-management framework. The whole thing is one entry script, thirteen libraries, and a directory of self-describing modules. The framework's job is to run the same set of idempotent modules whenever state drifts, with the same observable end state.
 
 ## Flow
 
 ```
-bootstrap.sh
+bootstrap.sh <command> [options]
    │
    ▼
-preflight (stage 0)
-   │ distro / arch / root / net / dns / disk / memory
+preflight (stage 0, on apply)
+   │ distro / arch / root / net / dns / disk / memory / time
    ▼
 load bootstrap.conf
    │
@@ -20,10 +20,10 @@ discover modules in modules/*.sh
 topological sort by dependencies()
    │
    ▼
-for each module (in order, gated by stage):
-   ├─ check()             ← returns 0 if already satisfied
-   │                         1 if install() is required
-   │                         2 if forced re-install
+for each module (in order, gated by stage / --only):
+   ├─ check()             ← returns 0 = already satisfied
+   │                         1 = install() is required
+   │                         2 = forced re-install
    ├─ install()            ← only runs when check() ≠ 0
    │     │
    │     ▼ every change goes through an ensure_* helper:
@@ -33,40 +33,60 @@ for each module (in order, gated by stage):
    │       - log
    ├─ validate()           ← must return 0 or rollback fires
    └─ record state (state/<module>.state)
-   ▼
-doctor (on demand)
 ```
 
-## Stages
+## Commands
 
-Stages are coarse-grained phases. A module declares which stage it belongs to; the runner processes them in order.
+| Command | Maps to | Description |
+|---|---|---|
+| `apply` | preflight + runner_run_all | Reconcile to desired state |
+| `validate` | runner_discover + per-module check() | Detect drift without applying |
+| `status` | read state files | Print last-known module status |
+| `doctor` | doctor_run | 30+ checks, Markdown + JSON |
+| `update` | git pull + apply | Pull latest framework and re-apply |
+| `backup` | tar state/ + bootstrap.conf | Snapshot |
+| `restore` | tar extract | Restore from snapshot |
+| `rollback` | runner_rollback_all | Undo module(s) |
+| `clean` | find + delete | Remove transient state |
 
-| Stage | Name | Purpose | May lock you out? |
-|---|---|---|---|
-| 0 | Preflight | Read-only checks. | No |
-| 1 | Safe bootstrap | Update OS, create admin user, install SSH keys, sudo. Root login stays enabled. | No |
-| 2 | Security | Disable root, disable password auth, UFW, fail2ban, AppArmor, sysctl. | Yes — only fires after admin is validated. |
-| 3 | Developer | Node, Bun, Python, .NET, PowerShell, shell utilities. | No |
-| 4 | Containers | Podman rootless, buildah, skopeo, Quadlets. | No |
-| 5 | AI | OpenClaw, Pi, Codex, Claude. | No |
-| 6 | Monitoring | btop, smartmontools, vnstat. | No |
-| 7 | Validation | Diagnostics report. | No |
+## Modules
 
-## Module interface
+The module set is intentionally narrow. Each module is a single Bash file under `modules/`. The runner discovers them, sources them once, and calls functions whose names start with `mod_<NN>_<name>_`.
 
-Every module is `modules/NN-name.sh` where `NN` is the load order. The runner sources the file once and calls functions whose names start with `mod_<NN>_`.
+### Module roster
+
+| ID | Stage | Purpose |
+|---|---|---|
+| `10-base` | 1 | apt update + base packages; hostname, timezone, locale; chrony; unattended-upgrades |
+| `20-users` | 1 | Least-privilege users: admin (full sudo + SSH), deploy (restricted sudo, locked), agent (nologin, no SSH, no sudo) |
+| `25-filesystem` | 1 | `/srv` hierarchy with role-based ownership and `/srv/agent` runtime dirs |
+| `30-security` | 2 | SSH hardening, UFW, Fail2Ban, AppArmor, auditd, needrestart, curated sysctl |
+| `40-podman` | 4 | Rootless Podman, buildah, skopeo, fuse-overlayfs, slirp4netns, subuid/subgid, linger, registries.conf, storage.conf |
+| `45-git` | 3 | git + LFS + gh CLI + delta; per-user global config (admin + deploy) |
+| `50-dev` | 3 | Language runtimes: Node LTS, Bun, Python, uv, pipx, .NET SDK, PowerShell |
+| `55-shell` | 3 | Modern shell: zsh, starship, fzf, zoxide, bat, ripgrep, fd, jq, yq, tmux, direnv, fastfetch, btop |
+| `60-ai` | 5 | OpenClaw, Pi, Codex CLI, Claude Code, Ollama — installed as systemd user services under the `agent` account |
+| `70-monitoring` | 6 | btop, fastfetch, smartmontools + smartd config, vnstat, iotop, iftop, lm-sensors |
+
+The numeric prefix is **not** authoritative for execution order — `dependencies()` is. The prefix exists so `ls modules/` reflects the intended order.
+
+### Module interface
 
 ```bash
-mod_20_dependencies() { echo "10-base"; }     # space-separated module IDs
-mod_20_stage()        { echo "1"; }
-mod_20_check()        { return 0; }           # 0 = already done
-mod_20_install()      { ensure_user "$ADMIN_USER"; ...; }
-mod_20_validate()     { id "$ADMIN_USER" >/dev/null; }
-mod_20_rollback()     { userdel -r "$ADMIN_USER" 2>/dev/null || true; }
-mod_20_description()  { echo "Create admin/deploy/agent users and SSH keys"; }
+mod_NN_name_description()  { echo "Short description"; }
+mod_NN_name_stage()        { echo "1"; }
+mod_NN_name_dependencies() { echo "10-base 30-security"; }
+mod_NN_name_check()        { ... return 0; }     # 0 = already done
+mod_NN_name_install()      { ... }                # apply changes (idempotent)
+mod_NN_name_validate()     { ... return 0; }      # post-install sanity check
+mod_NN_name_rollback()     { ... }                # undo install()
 ```
 
-The `dependencies()` return is space-separated; the runner does a topological sort. Cycles are detected and abort the run.
+`check()` must be **fast and read-only**. No file mutations, no service restarts, no package installs.
+
+`install()` always goes through `ensure_*` helpers. Never call `apt`, `systemctl`, `useradd`, `cp`, `mv`, or `echo >>` directly. Wrap risky operations in backup + register.
+
+`validate()` returns 0 only if every post-condition holds. The runner treats non-zero as a failure and rolls the module back.
 
 ## Idempotency model
 
@@ -93,9 +113,9 @@ Examples:
 
 ## Rollback
 
-Every file backup is logged in `state/rollback.tsv` (TSV: timestamp, module, path, backup path). On failure, the runner iterates that file in reverse and restores each backup. New backups take precedence; missing backups are skipped with a warning.
+Every file backup is logged in `state/rollback.tsv`. On failure, the runner iterates that file in reverse and restores each backup. New backups take precedence; missing backups are skipped with a warning.
 
-`./bootstrap.sh rollback MODULE` rolls back only that module. `./bootstrap.sh rollback` rolls back everything.
+`./bootstrap.sh rollback MODULE` rolls back only that module. `./bootstrap.sh rollback` rolls back everything in reverse order.
 
 ## State
 
@@ -104,22 +124,37 @@ Every file backup is logged in `state/rollback.tsv` (TSV: timestamp, module, pat
 ```
 status=ok
 installed_at=2026-07-10T08:13:42Z
-checksum=...
+module_checksum=...
 ```
 
-The runner checks `state/<module>.state` before invoking `check()` — a module that succeeded last run can be skipped if `--only` was not given. Pass `--force` to ignore state.
+The runner checks the state file before invoking `check()`. A module that succeeded last run can be skipped. Pass `--force` to ignore state.
+
+`./bootstrap.sh status` prints the table:
+
+```
+MODULE                 STATUS                 INSTALLED_AT
+------------------------------------------------------------
+10-base                ok                     2026-07-10T08:13:42Z
+20-users               admin_validated        2026-07-10T08:14:00Z
+```
 
 ## Configuration loading
 
-`lib/config.sh` reads `bootstrap.conf` (or `--config FILE`) once and exports every key. A small schema in `lib/config.sh` declares defaults and types. Unknown keys log a warning but are accepted (forward-compatible).
+`lib/config.sh` reads `bootstrap.conf` (or `--config FILE`) once and exports every key. A schema declares defaults and types. Unknown keys log a warning but are accepted (forward-compatible).
 
 ## Logging
 
-`lib/log.sh` writes to `state/bootstrap.log` (rotated daily) and to the terminal with ANSI colors when stderr is a TTY. Levels: `INFO`, `WARN`, `ERROR`, `SUCCESS`, `DEBUG`. `--debug` enables `DEBUG`. `--verbose` enables `INFO` and up. Quiet is the default.
+`lib/log.sh` writes to `state/bootstrap.log` and to the terminal with ANSI colors when stderr is a TTY. Levels: `INFO`, `WARN`, `ERROR`, `SUCCESS`, `DEBUG`. `--debug` enables `DEBUG`. `--verbose` enables `INFO` and up.
 
 ## Safety
 
-`sshd -t` is the gate. `ensure_service_running ssh` and `ensure_service_reload ssh` refuse to restart the service if `sshd -t` exits non-zero. The runner refuses to enter stage 2 unless stage 1 ended with the admin user successfully authenticated against a live `sshd` (checked by parsing `state/20-users.state` and, optionally, by reading `last -f /var/log/wtmp` if available).
+`sshd -t` is the gate. `ensure_service_sshd_reload` refuses to restart sshd if `sshd -t` exits non-zero. The runner refuses to enter stage 2 unless stage 1 ended with the admin user successfully authenticated.
+
+The `agent` user is sandboxed by construction: `passwd -l` (locked), `/usr/sbin/nologin`, no `~/.ssh/authorized_keys`, no sudo. The doctor validates every one of these properties at runtime.
+
+## Backups and restores
+
+`./bootstrap.sh backup` snapshots `state/` and `bootstrap.conf` to a gzipped tarball under `./backups/` (or a directory you specify). `./bootstrap.sh restore <file>` extracts it back. The runner itself does not depend on backups; backups are a safety net for the operator.
 
 ## Extensibility
 

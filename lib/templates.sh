@@ -6,7 +6,8 @@ set -Eeuo pipefail
 
 # Pure-Bash ${VAR}/${VAR:-default}/$VAR substitution.
 # Mirrors the subset of envsubst that we actually use.
-_tpl_subst() {
+_tpl_subst()
+{
   local line="$1"
   local result="$line"
   local brace_re='\$\{[A-Za-z_][A-Za-z0-9_]*(:[+-]?[^}]*)?\}'
@@ -15,17 +16,21 @@ _tpl_subst() {
   while [[ "$result" =~ $brace_re ]]; do
     local match="${BASH_REMATCH[0]}"
     local name="${match#\${}"
-    name="${name%%[:}]*}"
-    local op="${match#\${$name}"
+    name="${name%\}}"
+    # Strip the operator suffix (e.g. :-default, -default, :+alt, +alt).
+    case "$name" in
+      *:*) name="${name%%:*}" ;;
+    esac
+    local op="${match#\${$name}}"
     op="${op%\}}"
     local value="${!name:-}"
     local replacement=""
     case "$op" in
-      "")        replacement="$value" ;;
-      :-*)       [[ -z "$value" ]] && replacement="${op#:-}" || replacement="$value" ;;
-      -*)        [[ -z "$value" ]] && replacement="${op#-}"  || replacement="$value" ;;
-      :+*)       [[ -n "$value" ]] && replacement="${op#:+}" || replacement="" ;;
-      *)         replacement="$value" ;;
+      "") replacement="$value" ;;
+      :-*) [[ -z "$value" ]] && replacement="${op#:-}" || replacement="$value" ;;
+      -*) [[ -z "$value" ]] && replacement="${op#-}" || replacement="$value" ;;
+      :+*) [[ -n "$value" ]] && replacement="${op#:+}" || replacement="" ;;
+      *) replacement="$value" ;;
     esac
     result="${result//$match/$replacement}"
   done
@@ -41,7 +46,8 @@ _tpl_subst() {
 }
 
 # tpl_render STRING  → expanded string with current shell env.
-tpl_render() {
+tpl_render()
+{
   local template="$1"
   if command -v envsubst >/dev/null 2>&1; then
     envsubst <<<"$template"
@@ -55,7 +61,8 @@ tpl_render() {
 }
 
 # tpl_render_file SRC DEST [mode]  — reads SRC, renders, writes atomically.
-tpl_render_file() {
+tpl_render_file()
+{
   local src="$1" dest="$2" mode="${3:-0644}"
   if [[ ! -r "$src" ]]; then
     log_error "template not readable: $src"
@@ -63,7 +70,7 @@ tpl_render_file() {
   fi
   local rendered
   rendered="$(tpl_render "$(cat -- "$src")")"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     log_info "would render $src -> $dest (mode $mode)"
     return 0
   fi
@@ -72,7 +79,7 @@ tpl_render_file() {
   dir="$(dirname -- "$dest")"
   fs_mkdir_p "$dir"
   tmp="$(mktemp "$dir/.bootstrapx.XXXXXX")"
-  printf '%s' "$rendered" > "$tmp"
+  printf '%s' "$rendered" >"$tmp"
   chmod "$mode" "$tmp"
   mv -f -- "$tmp" "$dest"
   register_rollback "$dest" "fs_restore_backup <backup> $dest"

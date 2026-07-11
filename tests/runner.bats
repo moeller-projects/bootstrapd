@@ -143,7 +143,7 @@ mod_20_users_description() { echo "users"; }
 mod_20_users_stage()       { echo "1"; }
 mod_20_users_dependencies(){ echo "10-a"; }
 mod_20_users_check()       { return 1; }
-mod_20_users_install()     { printf 'admin_validated\n' > "$BOOTSTRAP_STATE/20-users.state"; }
+mod_20_users_install()     { printf 'status=admin_validated\ninstalled_at=2026-07-10T00:00:00Z\n' > "$BOOTSTRAP_STATE/20-users.state"; }
 mod_20_users_validate()    { return 0; }
 mod_20_users_rollback()    { rm -f "$BOOTSTRAP_STATE/20-users.state"; }
 EOF

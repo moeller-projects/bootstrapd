@@ -3,9 +3,18 @@
 # Installs the foundational packages required by every other module.
 set -Eeuo pipefail
 
-mod_10_base_description() { echo "Install base packages and configure timezone/locale/hostname"; }
-mod_10_base_stage()       { echo "1"; }
-mod_10_base_dependencies(){ echo ""; }
+mod_10_base_description()
+{
+  echo "Install base packages and configure timezone/locale/hostname"
+}
+mod_10_base_stage()
+{
+  echo "1"
+}
+mod_10_base_dependencies()
+{
+  echo ""
+}
 
 BASE_PACKAGES=(
   sudo
@@ -29,7 +38,8 @@ BASE_PACKAGES=(
   bash-completion
 )
 
-mod_10_base_check() {
+mod_10_base_check()
+{
   local p
   for p in "${BASE_PACKAGES[@]}"; do
     pkg_installed "$p" || return 1
@@ -37,7 +47,8 @@ mod_10_base_check() {
   return 0
 }
 
-mod_10_base_install() {
+mod_10_base_install()
+{
   pkg_update_index
   DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
   ensure_packages "${BASE_PACKAGES[@]}"
@@ -56,7 +67,7 @@ mod_10_base_install() {
     ensure_package unattended-upgrades
     if [[ ! -f /etc/apt/apt.conf.d/20auto-upgrades ]]; then
       ensure_file /etc/apt/apt.conf.d/20auto-upgrades \
-$'APT::Periodic::Update-Package-Lists "1";
+        $'APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 APT::Periodic::AutocleanInterval "7";
 APT::Periodic::Download-Upgradeable-Packages "1";
@@ -70,16 +81,21 @@ APT::Periodic::Download-Upgradeable-Packages "1";
   ensure_service_running chrony
 }
 
-mod_10_base_validate() {
+mod_10_base_validate()
+{
   local p
   for p in "${BASE_PACKAGES[@]}"; do
-    pkg_installed "$p" || { log_error "missing package: $p"; return 1; }
+    pkg_installed "$p" || {
+      log_error "missing package: $p"
+      return 1
+    }
   done
-  [[ "$(date +%Z)" != "UTC" ]] || true  # UTC is fine; just a sanity hook.
+  [[ "$(date +%Z)" != "UTC" ]] || true # UTC is fine; just a sanity hook.
   return 0
 }
 
-mod_10_base_rollback() {
+mod_10_base_rollback()
+{
   # Removing the base packages would break the system. Rollback only removes
   # what this module explicitly added and is otherwise a no-op.
   :

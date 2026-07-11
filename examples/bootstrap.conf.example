@@ -1,22 +1,44 @@
 # BootstrapX configuration example.
 # Copy to ../bootstrap.conf and edit before running.
+#
+# Model: declarative desired state. Every knob the framework touches is here.
+# Anything missing uses the framework's default.
 
 # ---------- Identity ----------
 HOSTNAME=ai-dev-01
 TIMEZONE=Europe/Berlin
 LOCALE=en_US.UTF-8
 
+# ---------- Users (least-privilege model) ----------
 ADMIN_USER=admin
 DEPLOY_USER=deploy
 AGENT_USER=agent
 
+# DEPLOY_USER sandbox:
+#   true  -> deploy gets restricted sudo (reload/restart/podman pull only),
+#            no interactive shell, locked password.
+#   false -> deploy gets full sudo (NOT recommended).
+DEPLOY_SUDO_RESTRICTED=true
+
+# Allow the deploy user to log in via SSH (typically false; CI uses ephemeral keys).
+DEPLOY_SSH_ENABLED=false
+
+# ---------- Shared runtime hierarchy ----------
+SRV_ROOT=/srv
+
 # ---------- Network ----------
 SSH_PORT=22
 
-# One SSH public key per line. Same keys are installed for every user with SSH access.
+# One SSH public key per line. Installed for ADMIN_USER.
+# agent NEVER receives keys. deploy receives them only if DEPLOY_SSH_ENABLED=true.
 SSH_PUBLIC_KEYS="
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplek7XQ7ZQx replace-me-with-your-real-key
 "
+
+# ---------- Git (per-user global config) ----------
+GIT_DEFAULT_BRANCH=main
+GIT_USER_NAME=
+GIT_USER_EMAIL=
 
 # ---------- AI tooling ----------
 ENABLE_OPENCLAW=true
@@ -33,6 +55,9 @@ PODMAN_REGISTRIES="docker.io quay.io ghcr.io"
 
 # ---------- Developer tools ----------
 ENABLE_GITHUB_CLI=true
+ENABLE_ZSH=true
+ENABLE_STARSHIP=true
+ENABLE_TMUX=true
 NODE_VERSION=22
 DOTNET_CHANNEL=9.0
 PYTHON_VERSION=3.12

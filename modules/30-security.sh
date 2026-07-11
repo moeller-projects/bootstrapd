@@ -4,9 +4,18 @@
 # unless state/20-users.state status=admin_validated.
 set -Eeuo pipefail
 
-mod_30_security_description() { echo "SSH hardening, UFW, Fail2Ban, AppArmor, sysctl, auditd"; }
-mod_30_security_stage()       { echo "2"; }
-mod_30_security_dependencies(){ echo "20-users"; }
+mod_30_security_description()
+{
+  echo "SSH hardening, UFW, Fail2Ban, AppArmor, sysctl, auditd"
+}
+mod_30_security_stage()
+{
+  echo "2"
+}
+mod_30_security_dependencies()
+{
+  echo "20-users"
+}
 
 SSHD_HARDENING_LINES=(
   "Port ${SSH_PORT:-22}"
@@ -60,7 +69,8 @@ SYSCTL_LINES=(
   "fs.protected_symlinks = 1"
 )
 
-mod_30_security_check() {
+mod_30_security_check()
+{
   local f="/etc/ssh/sshd_config"
   [[ -f "$f" ]] || return 1
   grep -q '^PermitRootLogin no$' "$f" || return 1
@@ -69,7 +79,8 @@ mod_30_security_check() {
   return 0
 }
 
-mod_30_security_install() {
+mod_30_security_install()
+{
   log_info "stage 2: hardening SSH"
   # Backup and patch sshd_config.
   local cfg="/etc/ssh/sshd_config"
@@ -94,13 +105,13 @@ mod_30_security_install() {
     log_debug "ufw already allows ${port}/tcp"
   else
     log_info "ufw: allowing ${port}/tcp"
-    if (( ! BOOTSTRAP_DRY_RUN )); then
+    if ((!BOOTSTRAP_DRY_RUN)); then
       ufw allow "${port}/tcp"
     fi
   fi
   ensure_service_enabled ufw
   # Enable without prompting.
-  if (( ! BOOTSTRAP_DRY_RUN )); then
+  if ((!BOOTSTRAP_DRY_RUN)); then
     yes | ufw enable >/dev/null 2>&1 || ufw --force enable
   fi
 
@@ -109,7 +120,7 @@ mod_30_security_install() {
     ensure_package fail2ban
     ensure_directory /etc/fail2ban/jail.d 0755 root:root
     ensure_file /etc/fail2ban/jail.d/bootstrapx.conf \
-$'[sshd]
+      $'[sshd]
 enabled = true
 port = '"${port}"$'
 filter = sshd
@@ -137,7 +148,7 @@ bantime = 3600
     [[ "$line" =~ ^# ]] && continue
     ensure_line /etc/sysctl.d/99-bootstrapx.conf "$line"
   done
-  if (( ! BOOTSTRAP_DRY_RUN )); then
+  if ((!BOOTSTRAP_DRY_RUN)); then
     sysctl --system >/dev/null 2>&1 || true
   fi
 
@@ -152,7 +163,7 @@ bantime = 3600
     ensure_package unattended-upgrades apt-listchanges
     if [[ ! -f /etc/apt/apt.conf.d/50unattended-upgrades ]]; then
       ensure_file /etc/apt/apt.conf.d/50unattended-upgrades \
-$'Unattended-Upgrade::Allowed-Origins {
+        $'Unattended-Upgrade::Allowed-Origins {
     "${distro_id}:${distro_codename}-security";
 };
 Unattended-Upgrade::AutoFixInterruptedDpkg "true";
@@ -167,17 +178,28 @@ Unattended-Upgrade::Automatic-Reboot "false";
   fi
 }
 
-mod_30_security_validate() {
+mod_30_security_validate()
+{
   sshd_validate || return 1
   local cfg="/etc/ssh/sshd_config"
-  grep -q '^PermitRootLogin no$' "$cfg" || { log_error "PermitRootLogin no not applied"; return 1; }
-  grep -q '^PasswordAuthentication no$' "$cfg" || { log_error "PasswordAuthentication no not applied"; return 1; }
+  grep -q '^PermitRootLogin no$' "$cfg" || {
+    log_error "PermitRootLogin no not applied"
+    return 1
+  }
+  grep -q '^PasswordAuthentication no$' "$cfg" || {
+    log_error "PasswordAuthentication no not applied"
+    return 1
+  }
   svc_active ufw || log_warn "ufw not active"
-  [[ -f /etc/sysctl.d/99-bootstrapx.conf ]] || { log_error "sysctl file missing"; return 1; }
+  [[ -f /etc/sysctl.d/99-bootstrapx.conf ]] || {
+    log_error "sysctl file missing"
+    return 1
+  }
   return 0
 }
 
-mod_30_security_rollback() {
+mod_30_security_rollback()
+{
   # Restore backed-up sshd_config and validate.
   sshd_validate || true
   if [[ -e /etc/ssh/sshd_config ]]; then

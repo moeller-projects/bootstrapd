@@ -5,13 +5,15 @@ set -Eeuo pipefail
 
 # Generic guards reused by every helper.
 
-ensure_dryrun_skip() {
-  (( BOOTSTRAP_DRY_RUN ))
+ensure_dryrun_skip()
+{
+  ((BOOTSTRAP_DRY_RUN))
 }
 
 # ---------- packages ----------
 
-ensure_package() {
+ensure_package()
+{
   local name="$1"
   if pkg_installed "$name"; then
     log_debug "package already installed: $name"
@@ -21,13 +23,14 @@ ensure_package() {
   pkg_install "$name"
 }
 
-ensure_packages() {
+ensure_packages()
+{
   local missing=()
-  while (( $# )); do
+  while (($#)); do
     pkg_installed "$1" || missing+=("$1")
     shift
   done
-  if (( ${#missing[@]} == 0 )); then
+  if ((${#missing[@]} == 0)); then
     log_debug "all packages already installed"
     return 0
   fi
@@ -35,7 +38,8 @@ ensure_packages() {
   pkg_install_many "${missing[@]}"
 }
 
-ensure_repo() {
+ensure_repo()
+{
   local uri="$1" name="$2" signed_by="${3:-}"
   local path="/etc/apt/sources.list.d/${name}.sources"
   if fs_file_exists "$path" && grep -q "$uri" "$path"; then
@@ -46,7 +50,8 @@ ensure_repo() {
   pkg_repo_add "$uri" "$name" "$signed_by"
 }
 
-ensure_gpg_key() {
+ensure_gpg_key()
+{
   local url="$1" dest="$2"
   if fs_file_exists "$dest"; then
     log_debug "GPG key already present: $dest"
@@ -58,7 +63,8 @@ ensure_gpg_key() {
 
 # ---------- users and groups ----------
 
-ensure_user() {
+ensure_user()
+{
   local name="$1" home="${2:-/home/$1}" shell="${3:-/bin/bash}"
   if user_exists "$name"; then
     log_debug "user exists: $name"
@@ -68,7 +74,8 @@ ensure_user() {
   user_create "$name" "$home" "$shell"
 }
 
-ensure_group() {
+ensure_group()
+{
   local name="$1"
   if group_exists "$name"; then
     log_debug "group exists: $name"
@@ -78,7 +85,8 @@ ensure_group() {
   group_create "$name"
 }
 
-ensure_user_in_group() {
+ensure_user_in_group()
+{
   local user="$1" group="$2"
   if id -nG -- "$user" 2>/dev/null | tr ' ' '\n' | grep -qx "$group"; then
     log_debug "$user already in group $group"
@@ -90,10 +98,11 @@ ensure_user_in_group() {
 
 # ---------- filesystem ----------
 
-ensure_directory() {
+ensure_directory()
+{
   local dir="$1" mode="${2:-0755}" owner="${3:-root:root}"
   if fs_dir_exists "$dir"; then
-    if (( BOOTSTRAP_VERBOSE )); then
+    if ((BOOTSTRAP_VERBOSE)); then
       local cur
       cur="$(_fs_path_owner "$dir")"
       log_debug "directory exists: $dir (owner=$cur)"
@@ -101,7 +110,7 @@ ensure_directory() {
     return 0
   fi
   log_info "creating directory: $dir (mode $mode, owner $owner)"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   mkdir -p -- "$dir"
@@ -109,7 +118,8 @@ ensure_directory() {
   bootstrap_chown_if_root -- "$owner" "$dir"
 }
 
-ensure_file() {
+ensure_file()
+{
   local path="$1" content="$2" mode="${3:-0644}" owner="${4:-root:root}"
   if fs_file_exists "$path"; then
     if [[ "$(cat -- "$path")" == "$content" ]]; then
@@ -120,7 +130,7 @@ ensure_file() {
   else
     log_info "writing file: $path"
   fi
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   fs_backup_file "$path" >/dev/null || true
@@ -128,23 +138,24 @@ ensure_file() {
   dir="$(dirname -- "$path")"
   fs_mkdir_p "$dir"
   tmp="$(mktemp "$dir/.bootstrapx.XXXXXX")"
-  printf '%s' "$content" > "$tmp"
+  printf '%s' "$content" >"$tmp"
   chmod "$mode" "$tmp"
   bootstrap_chown_if_root -- "$owner" "$tmp"
   mv -f -- "$tmp" "$path"
   register_rollback "$path" "fs_restore_backup <backup> $path"
 }
 
-ensure_template() {
+ensure_template()
+{
   local src="$1" dest="$2" mode="${3:-0644}" owner="${4:-root:root}"
   local rendered
-  rendered="$(envsubst < "$src")"
+  rendered="$(envsubst <"$src")"
   if fs_file_exists "$dest" && [[ "$(cat -- "$dest")" == "$rendered" ]]; then
     log_debug "template-rendered file unchanged: $dest"
     return 0
   fi
   log_info "rendering template: $src -> $dest"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   tpl_render_file "$src" "$dest" "$mode"
@@ -153,14 +164,15 @@ ensure_template() {
 
 # ensure_line FILE LINE — replaces the matching line if any, appends otherwise.
 # The match is exact-string on the leading key (first whitespace-delimited token).
-ensure_line() {
+ensure_line()
+{
   local path="$1" line="$2"
   if fs_file_exists "$path" && grep -qxF "$line" -- "$path"; then
     log_debug "line already present in $path"
     return 0
   fi
   log_info "patching line in $path"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   fs_backup_file "$path" >/dev/null || true
@@ -171,28 +183,29 @@ ensure_line() {
     # Drop any existing line that starts with the same leading key (key = first token).
     local key
     key="${line%% *}"
-    awk -v key="$key" 'BEGIN{OFS=""} !($1==key)' "$path" > "$tmp" || true
+    awk -v key="$key" 'BEGIN{OFS=""} !($1==key)' "$path" >"$tmp" || true
   else
-    : > "$tmp"
+    : >"$tmp"
   fi
-  printf '%s\n' "$line" >> "$tmp"
+  printf '%s\n' "$line" >>"$tmp"
   mv -f -- "$tmp" "$path"
   register_rollback "$path" "fs_restore_backup <backup> $path"
 }
 
 # ensure_block FILE MARKER TEXT — replaces text between # BEGIN MARKER / # END MARKER
 # in place. Idempotent: a second call with identical content produces an identical file.
-ensure_block() {
+ensure_block()
+{
   local path="$1" marker="$2" content="$3"
   local begin="# BEGIN ${marker}"
   local end="# END ${marker}"
   local block="${begin}
 ${content}
 ${end}"
-  if fs_file_exists "$path" \
-      && grep -qF "$begin" -- "$path" \
-      && grep -qF "$end" -- "$path"; then
-    if (( BOOTSTRAP_DRY_RUN )); then
+  if fs_file_exists "$path" &&
+    grep -qF "$begin" -- "$path" &&
+    grep -qF "$end" -- "$path"; then
+    if ((BOOTSTRAP_DRY_RUN)); then
       log_info "would refresh block $marker in $path"
       return 0
     fi
@@ -205,28 +218,29 @@ ${end}"
       $0==e {skip=0; next}
       skip {next}
       {print}
-    ' "$path" > "$tmp"
+    ' "$path" >"$tmp"
     mv -f -- "$tmp" "$path"
     register_rollback "$path" "fs_restore_backup <backup> $path"
     return 0
   fi
   log_info "appending block $marker to $path"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   fs_backup_file "$path" >/dev/null || true
-  printf '\n%s\n' "$block" >> "$path"
+  printf '\n%s\n' "$block" >>"$path"
   register_rollback "$path" "fs_restore_backup <backup> $path"
 }
 
-ensure_symlink() {
+ensure_symlink()
+{
   local link="$1" target="$2"
   if fs_link_exists "$link" && [[ "$(readlink -- "$link")" == "$target" ]]; then
     log_debug "symlink already correct: $link -> $target"
     return 0
   fi
   log_info "creating symlink: $link -> $target"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   fs_mkdir_p "$(dirname -- "$link")"
@@ -234,17 +248,18 @@ ensure_symlink() {
   ln -s -- "$target" "$link"
 }
 
-ensure_permission() {
+ensure_permission()
+{
   local path="$1" mode="$2" owner="${3:-}"
   local cur_mode cur_owner
   cur_mode="$(stat -c '%a' -- "$path" 2>/dev/null || echo "")"
   cur_owner="$(stat -c '%U:%G' -- "$path" 2>/dev/null || echo "")"
-  if [[ "$cur_mode" == "$mode" && ( -z "$owner" || "$cur_owner" == "$owner" ) ]]; then
+  if [[ "$cur_mode" == "$mode" && (-z "$owner" || "$cur_owner" == "$owner") ]]; then
     log_debug "permission already correct: $path"
     return 0
   fi
   log_info "fixing permission on $path ($cur_mode -> $mode${owner:+,$cur_owner -> $owner})"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   chmod "$mode" -- "$path"
@@ -256,7 +271,8 @@ ensure_permission() {
 
 # ---------- services ----------
 
-ensure_service_enabled() {
+ensure_service_enabled()
+{
   local name="$1"
   if svc_enabled "$name"; then
     log_debug "service already enabled: $name"
@@ -266,7 +282,8 @@ ensure_service_enabled() {
   svc_enable "$name"
 }
 
-ensure_service_disabled() {
+ensure_service_disabled()
+{
   local name="$1"
   if ! svc_enabled "$name" && ! svc_active "$name"; then
     log_debug "service already disabled: $name"
@@ -276,7 +293,8 @@ ensure_service_disabled() {
   svc_disable "$name"
 }
 
-ensure_service_running() {
+ensure_service_running()
+{
   local name="$1"
   if svc_active "$name"; then
     log_debug "service already running: $name"
@@ -287,14 +305,16 @@ ensure_service_running() {
 }
 
 # ensure_service_sshd_reload  — special case for sshd: validate then reload.
-ensure_service_sshd_reload() {
+ensure_service_sshd_reload()
+{
   log_info "validating and reloading sshd"
   sshd_reload_safely
 }
 
 # ---------- system ----------
 
-ensure_sysctl() {
+ensure_sysctl()
+{
   local key="$1" value="$2"
   local cur
   cur="$(sysctl -n "$key" 2>/dev/null || echo "")"
@@ -303,7 +323,7 @@ ensure_sysctl() {
     return 0
   fi
   log_info "setting sysctl $key = $value"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   local conf="/etc/sysctl.d/99-bootstrapx.conf"
@@ -311,7 +331,8 @@ ensure_sysctl() {
   sysctl -w "$key=$value" >/dev/null
 }
 
-ensure_hostname() {
+ensure_hostname()
+{
   local name="$1"
   local cur
   cur="$(hostnamectl --static status 2>/dev/null || hostname)"
@@ -320,13 +341,14 @@ ensure_hostname() {
     return 0
   fi
   log_info "setting hostname: $name"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   hostnamectl set-hostname "$name"
 }
 
-ensure_timezone() {
+ensure_timezone()
+{
   local tz="$1"
   local cur="/etc/localtime"
   local want="/usr/share/zoneinfo/$tz"
@@ -335,21 +357,22 @@ ensure_timezone() {
     return 0
   fi
   log_info "setting timezone: $tz"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   ln -sf -- "$want" "$cur"
   dpkg-reconfigure -f noninteractive tzdata >/dev/null 2>&1 || true
 }
 
-ensure_locale() {
+ensure_locale()
+{
   local loc="$1"
   if locale -a 2>/dev/null | grep -qx "$loc"; then
     log_debug "locale already generated: $loc"
     return 0
   fi
   log_info "generating locale: $loc"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   ensure_line /etc/locale.gen "$loc UTF-8"
@@ -359,7 +382,8 @@ ensure_locale() {
 
 # ---------- scheduled jobs ----------
 
-ensure_cron() {
+ensure_cron()
+{
   local spec="$1" user="${2:-root}"
   local marker="# bootstrapx-managed"
   local line="$spec $marker"
@@ -368,22 +392,23 @@ ensure_cron() {
     return 0
   fi
   log_info "installing cron for $user: $spec"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   local tmp
   tmp="$(mktemp)"
-  crontab -u "$user" -l 2>/dev/null > "$tmp" || true
-  printf '%s\n' "$line" >> "$tmp"
+  crontab -u "$user" -l 2>/dev/null >"$tmp" || true
+  printf '%s\n' "$line" >>"$tmp"
   crontab -u "$user" -- "$tmp"
   rm -f -- "$tmp"
 }
 
-ensure_timer() {
+ensure_timer()
+{
   # Best-effort: defers to the calling module to write the unit file, then enables+starts.
   local unit="$1"
   log_info "ensuring timer: $unit"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   systemctl enable --now -- "$unit"
@@ -391,7 +416,8 @@ ensure_timer() {
 
 # ---------- environment ----------
 
-ensure_environment_variable() {
+ensure_environment_variable()
+{
   local name="$1" value="$2" scope="${3:-/etc/environment}"
   if [[ -f "$scope" ]] && grep -qE "^${name}=" "$scope"; then
     local cur
@@ -406,20 +432,21 @@ ensure_environment_variable() {
       BEGIN{FS="="; OFS="="}
       $1==n {print n, v; next}
       {print}
-    ' "$scope" > "${scope}.tmp"
+    ' "$scope" >"${scope}.tmp"
     mv -f -- "${scope}.tmp" "$scope"
     register_rollback "$scope" "fs_restore_backup <backup> $scope"
   else
     log_info "adding env $name"
     fs_backup_file "$scope" >/dev/null || true
-    printf '\n%s=%s\n' "$name" "$value" >> "$scope"
+    printf '\n%s=%s\n' "$name" "$value" >>"$scope"
     register_rollback "$scope" "fs_restore_backup <backup> $scope"
   fi
 }
 
 # ensure_mount SOURCE TARGET FSTYPE OPTIONS — appends to /etc/fstab if missing.
 # SOURCE, TARGET, FSTYPE, OPTIONS are fstab fields. dump/pass default to 0 2.
-ensure_mount() {
+ensure_mount()
+{
   local src="$1" target="$2" fstype="$3" opts="${4:-defaults}" dump="${5:-0}" pass="${6:-2}"
   local fstab="/etc/fstab"
   local entry="${src} ${target} ${fstype} ${opts} ${dump} ${pass}"
@@ -428,11 +455,11 @@ ensure_mount() {
     return 0
   fi
   log_info "adding fstab mount: $entry"
-  if (( BOOTSTRAP_DRY_RUN )); then
+  if ((BOOTSTRAP_DRY_RUN)); then
     return 0
   fi
   fs_backup_file "$fstab" >/dev/null || true
-  printf '%s\n' "$entry" >> "$fstab"
+  printf '%s\n' "$entry" >>"$fstab"
   register_rollback "$fstab" "fs_restore_backup <backup> $fstab"
   fs_mkdir_p "$target"
 }
