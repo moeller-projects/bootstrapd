@@ -1,0 +1,4 @@
+# /etc/apparmor.d/boot_profile — installed by 30-security
+# Switch AppArmor to "attach" profile mode at boot (lockdown).
+
+boot_profile=attach

@@ -1,0 +1,48 @@
+# BootstrapX configuration example.
+# Copy to ../bootstrap.conf and edit before running.
+
+# ---------- Identity ----------
+HOSTNAME=ai-dev-01
+TIMEZONE=Europe/Berlin
+LOCALE=en_US.UTF-8
+
+ADMIN_USER=admin
+DEPLOY_USER=deploy
+AGENT_USER=agent
+
+# ---------- Network ----------
+SSH_PORT=22
+
+# One SSH public key per line. Same keys are installed for every user with SSH access.
+SSH_PUBLIC_KEYS="
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplek7XQ7ZQx replace-me-with-your-real-key
+"
+
+# ---------- AI tooling ----------
+ENABLE_OPENCLAW=true
+ENABLE_PI=true
+ENABLE_CODEX=true
+ENABLE_CLAUDE=true
+ENABLE_OLLAMA=false
+
+# ---------- Containers ----------
+ENABLE_PODMAN=true
+ENABLE_DOCKER=false
+PODMAN_STORAGE=/var/lib/containers/storage
+PODMAN_REGISTRIES="docker.io quay.io ghcr.io"
+
+# ---------- Developer tools ----------
+ENABLE_GITHUB_CLI=true
+NODE_VERSION=22
+DOTNET_CHANNEL=9.0
+PYTHON_VERSION=3.12
+
+# ---------- Security ----------
+ENABLE_FAIL2BAN=true
+ENABLE_APPARMOR=true
+ENABLE_AUTO_UPDATES=true
+ENABLE_TAILSCALE=false
+ENABLE_CADDY=false
+
+# ---------- Monitoring ----------
+ENABLE_MONITORING=true

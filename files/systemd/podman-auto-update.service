@@ -1,0 +1,15 @@
+# Example user-level systemd unit: podman-auto-update.service
+# Drop into ~/.config/systemd/user/ and enable.
+# Triggers `podman auto-update` to refresh running containers.
+
+[Unit]
+Description=Podman auto-update (registry-flavored)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/podman auto-update
+
+[Install]
+WantedBy=default.target

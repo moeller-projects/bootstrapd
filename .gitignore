@@ -1,0 +1,21 @@
+# State directory holds runtime artefacts (logs, state files, doctor reports).
+# Everything inside is reproducible from ./bootstrap.sh; never commit it.
+state/*
+!state/.gitkeep
+
+# Backups live under state/backups/.
+state/backups/
+
+# Local config (operator-specific secrets).
+bootstrap.conf
+*.local
+
+# IDE / OS noise.
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.bak
+
+# Logs.
+*.log

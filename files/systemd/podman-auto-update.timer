@@ -1,0 +1,12 @@
+# Example user-level systemd timer: podman-auto-update.timer
+# Pairs with podman-auto-update.service. Daily at 04:30.
+
+[Unit]
+Description=Daily Podman auto-update
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,30 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tarball
+        run: |
+          mkdir -p release
+          tar --exclude='./release' --exclude='./.git' --exclude='./state/backups' \
+              -czf "release/bootstrapx-${GITHUB_REF_NAME}.tar.gz" .
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.tar.gz
+          generate_release_notes: true

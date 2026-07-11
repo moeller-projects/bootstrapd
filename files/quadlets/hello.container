@@ -1,0 +1,19 @@
+# Example Quadlet: hello.container
+# Copy to ~/.config/containers/systemd/ on the admin user to activate.
+# `systemctl --user status hello` afterwards.
+
+[Unit]
+Description=A trivial hello-world container (Quadlet example)
+After=network-online.target
+
+[Container]
+Image=docker.io/library/hello-world
+AutoUpdate=registry
+PublishPort=8080:80
+
+[Service]
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
