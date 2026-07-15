@@ -21,8 +21,9 @@ A working example is at [`examples/bootstrap.conf.example`](examples/bootstrap.c
 |---|---|---|---|
 | `SSH_PORT` | port | `22` | Listening port for sshd. Validated before reload. |
 | `SSH_PUBLIC_KEYS` | multi-line | — | One key per line. Installed for every user with SSH access. |
-| `ENABLE_TAILSCALE` | bool | `false` | Install and enroll Tailscale. |
-
+| `ENABLE_TAILSCALE` | bool | `true` | Install and enroll Tailscale. |
+| `TAILSCALE_AUTH_KEY` | string | — | Optional auth key for unattended Tailscale enrollment. |
+| `ENABLE_PIGEONS` | bool | `false` | Install the optional Pigeons SSH-over-QUIC service. |
 ## Packages
 
 | Key | Type | Default | Description |

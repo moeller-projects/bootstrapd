@@ -39,12 +39,13 @@ THE RUNNER PROMPTS THE OPERATOR:
 
 stage 2 (next run):
   10. verify state/20-users.state exists and admin user is authenticatable
-  11. write /etc/ssh/sshd_config:
+  11. optionally install/enroll Tailscale and/or Pigeons if enabled
+  12. write /etc/ssh/sshd_config:
         PermitRootLogin no
         PasswordAuthentication no
         PubkeyAuthentication yes
-  12. sshd -t (must succeed)
-  13. reload sshd
+  13. sshd -t (must succeed)
+  14. reload sshd
 ```
 
 If the operator does **not** confirm in step 9 and runs `--force` instead, the runner refuses: it will not disable root login without the awaiting_admin_validation state having been cleared by a successful reconnect.

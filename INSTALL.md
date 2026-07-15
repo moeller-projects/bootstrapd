@@ -62,6 +62,13 @@ sudo ./bootstrap.sh --safe
 
 This run re-enters the runner. Because root login is still enabled, the validator confirms the admin user can log in successfully. Only then does stage 2 (security hardening) lock root out.
 
+### Optional network access
+
+- Tailscale is enabled by default.
+- For unattended enrollment, set `TAILSCALE_AUTH_KEY` in `bootstrap.conf`.
+- If you do not want Tailscale on a host, set `ENABLE_TAILSCALE=false`.
+- `ENABLE_PIGEONS=true` installs the optional Pigeons roost service on the server.
+
 ### 5. Validate
 
 ```bash

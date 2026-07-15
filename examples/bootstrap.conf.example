@@ -35,6 +35,14 @@ SSH_PUBLIC_KEYS="
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplek7XQ7ZQx replace-me-with-your-real-key
 "
 
+# Optional: if you want unattended Tailscale enrollment, set an auth key here.
+# Otherwise the bootstrap will prompt you to authenticate the second time you run it.
+ENABLE_TAILSCALE=true
+TAILSCALE_AUTH_KEY=
+
+# Optional: installs pigeons as a system service that proxies SSH over QUIC.
+ENABLE_PIGEONS=false
+
 # ---------- Git (per-user global config) ----------
 GIT_DEFAULT_BRANCH=main
 GIT_USER_NAME=
@@ -66,7 +74,6 @@ PYTHON_VERSION=3.12
 ENABLE_FAIL2BAN=true
 ENABLE_APPARMOR=true
 ENABLE_AUTO_UPDATES=true
-ENABLE_TAILSCALE=false
 ENABLE_CADDY=false
 
 # ---------- Monitoring ----------

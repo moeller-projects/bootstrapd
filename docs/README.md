@@ -6,6 +6,7 @@ BootstrapX documentation lives at the repository root for shorter URLs. This `do
 |---|---|
 | Project overview | [../README.md](../README.md) |
 | Installation & first run | [../INSTALL.md](../INSTALL.md) |
+| New server setup | [NEW_SERVER_SETUP.md](NEW_SERVER_SETUP.md) |
 | Configuration reference | [../CONFIGURATION.md](../CONFIGURATION.md) |
 | Architecture (stages, modules, helpers) | [../ARCHITECTURE.md](../ARCHITECTURE.md) |
 | Security model & safe-bootstrap flow | [../SECURITY.md](../SECURITY.md) |
