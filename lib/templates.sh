@@ -49,10 +49,6 @@ _tpl_subst()
 tpl_render()
 {
   local template="$1"
-  if command -v envsubst >/dev/null 2>&1; then
-    envsubst <<<"$template"
-    return 0
-  fi
   local line out=""
   while IFS= read -r line || [[ -n "$line" ]]; do
     out+="$(_tpl_subst "$line")"$'\n'
