@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# modules/50-dev.sh — Stage 3: language runtimes (Node, Bun, Python, .NET, PowerShell).
-#
+# modules/50-dev.sh — Stage 3: language runtimes (Node, Bun, Python, .NET).
 # Git/GitHub CLI/delta/Git LFS live in 45-git.sh.
 # Shell tooling (zsh, starship, fzf, zoxide, bat, eza, ripgrep, fd, jq, yq,
 # tmux, direnv, fastfetch, btop) lives in 55-shell.sh.
@@ -11,7 +10,7 @@ set -Eeuo pipefail
 
 mod_50_dev_description()
 {
-  echo "Language runtimes: Node LTS, Bun, Python, uv, pipx, .NET SDK, PowerShell"
+  echo "Language runtimes: Node LTS, Bun, Python, uv, pipx, .NET SDK"
 }
 mod_50_dev_stage()
 {
@@ -121,15 +120,6 @@ mod_50_dev_install()
     ensure_package "dotnet-sdk-${channel}"
   fi
 
-  # ---------- PowerShell ----------
-  if ! command -v pwsh >/dev/null 2>&1; then
-    log_info "installing PowerShell"
-    ensure_gpg_key "https://packages.microsoft.com/keys/microsoft.asc" \
-      /etc/apt/keyrings/microsoft.gpg
-    ensure_repo "https://packages.microsoft.com/debian/12/prod" \
-      powershell /etc/apt/keyrings/microsoft.gpg
-    ensure_package powershell
-  fi
 }
 
 mod_50_dev_validate()
@@ -143,7 +133,6 @@ mod_50_dev_validate()
     return 1
   }
   command -v dotnet >/dev/null || log_warn "dotnet not installed"
-  command -v pwsh >/dev/null || log_warn "pwsh not installed"
   command -v bun >/dev/null || log_warn "bun not installed"
   command -v uv >/dev/null || log_warn "uv not installed"
   return 0

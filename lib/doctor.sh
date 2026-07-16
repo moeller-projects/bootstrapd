@@ -165,8 +165,6 @@ doctor_run()
   report+=$'\n'
   report+="$(_doctor_check 'dotnet' 'command -v dotnet')"
   report+=$'\n'
-  report+="$(_doctor_check 'pwsh' 'command -v pwsh')"
-  report+=$'\n'
   report+="$(_doctor_check 'zsh' 'command -v zsh')"
   report+=$'\n'
   report+="$(_doctor_check 'starship' 'command -v starship')"
