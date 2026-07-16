@@ -159,6 +159,21 @@ EOF
   ! grep -qF "BOOTSTRAP_TEST_VAR=hello" "$f"
 }
 
+@test "user_create reuses an existing same-named group" {
+  user_exists() { return 1; }
+  group_exists() {
+    [[ "$1" == "admin" ]]
+  }
+  useradd() {
+    printf '%s\n' "$*"
+  }
+
+  local out
+  out="$(user_create admin /home/admin /bin/bash)"
+  grep -qF -- "--gid admin" <<<"$out"
+}
+
+
 @test "ensure_mount appends fstab entries" {
   skip "ensure_mount writes to /etc/fstab; requires root"
   fstab="$TEST_TMPDIR/fstab"

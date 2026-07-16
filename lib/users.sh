@@ -31,7 +31,11 @@ user_create()
     log_info "would useradd --create-home --home $home --shell $shell $name"
     return 0
   fi
-  useradd --create-home --home-dir "$home" --shell "$shell" "$name"
+  local -a args=(--create-home --home-dir "$home" --shell "$shell")
+  if group_exists "$name"; then
+    args+=(--gid "$name")
+  fi
+  useradd "${args[@]}" "$name"
 }
 
 user_delete()
