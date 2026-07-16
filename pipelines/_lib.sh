@@ -164,26 +164,30 @@ EOF
 
 _install_yamllint()
 {
-  if command -v pip3 >/dev/null; then
-    step "installing yamllint via pip3 --user"
-    pip3 install --user --break-system-packages --quiet yamllint || die "pip install yamllint failed"
-    hash -r
+  local pip_cmd=()
+  if command -v pip3 >/dev/null 2>&1; then
+    pip_cmd=(pip3)
+  elif command -v python3 >/dev/null 2>&1 && python3 -m pip --version >/dev/null 2>&1; then
+    pip_cmd=(python3 -m pip)
   else
-    die "pip3 not available; install yamllint manually"
+    die "pip3/python3-pip not available; install yamllint manually"
   fi
+  step "installing yamllint via ${pip_cmd[*]} --user"
+  "${pip_cmd[@]}" install --user --break-system-packages --quiet yamllint || die "pip install yamllint failed"
+  hash -r
   command -v yamllint || die "yamllint not on PATH after install"
 }
 
 _install_markdownlint()
 {
-  if command -v npm >/dev/null; then
-    step "installing markdownlint-cli via npm"
-    npm install -g markdownlint-cli >/dev/null 2>&1 || die "npm install markdownlint-cli failed"
-    hash -r
-  else
-    die "npm not available; install markdownlint-cli manually"
+  local prefix="$TOOLS_DIR/markdownlint"
+  local bin="$prefix/node_modules/.bin/markdownlint"
+  if [[ ! -x "$bin" ]]; then
+    step "installing markdownlint-cli into $prefix"
+    mkdir -p "$prefix"
+    npm install --prefix "$prefix" markdownlint-cli >/dev/null 2>&1 || die "npm install markdownlint-cli failed"
   fi
-  command -v markdownlint || die "markdownlint not on PATH after install"
+  printf '%s\n' "$bin"
 }
 
 # All .sh files in the repo (excluding .git, pipelines/.tools, state).

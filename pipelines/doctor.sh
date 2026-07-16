@@ -18,10 +18,10 @@ fi
 # the script to not crash and the JSON report to be well-formed when --json
 # is passed.
 step "bootstrap doctor"
-./bootstrap.sh doctor
+bash ./bootstrap.sh doctor
 
 step "bootstrap doctor --json"
-./bootstrap.sh doctor --json
+bash ./bootstrap.sh doctor --json
 
 if [[ -s "$REPO_ROOT/state/doctor.json" ]]; then
   ok "doctor.json produced ($(wc -c <"$REPO_ROOT/state/doctor.json") bytes)"
