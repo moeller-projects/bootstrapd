@@ -65,7 +65,7 @@ mod_28_tailscale_install()
   local hostname="${HOSTNAME:-$(hostname)}"
   if [[ -n "${TAILSCALE_AUTH_KEY:-}" ]]; then
     log_info "enrolling Tailscale with auth key"
-    tailscale up --hostname="$hostname" --authkey="$TAILSCALE_AUTH_KEY"
+    tailscale up --hostname="$hostname" --accept-dns=false --authkey="$TAILSCALE_AUTH_KEY"
     return $?
   fi
 
@@ -75,7 +75,7 @@ mod_28_tailscale_install()
   fi
 
   log_info "enrolling Tailscale interactively"
-  tailscale up --hostname="$hostname"
+  tailscale up --hostname="$hostname" --accept-dns=false
 }
 
 mod_28_tailscale_validate()

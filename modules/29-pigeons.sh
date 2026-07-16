@@ -17,24 +17,14 @@ mod_29_pigeons_dependencies()
 
 _install_pigeons()
 {
-  local tmp
-  tmp="$(mktemp -d)"
   if ((BOOTSTRAP_DRY_RUN)); then
-    log_info "would install Pigeons via its official installer"
-    rm -rf "$tmp"
+    log_info "would run curl -fSsL https://vorc.s3.us-east-2.amazonaws.com/pigeons-install.sh | bash"
     return 0
   fi
 
-  curl --fail --location --silent --show-error --connect-timeout 15 --max-time 600 \
-    -o "$tmp/install.sh" -- "https://vorc.s3.us-east-2.amazonaws.com/pigeons-install.sh" || {
-    rm -rf "$tmp"
+  curl -fSsL https://vorc.s3.us-east-2.amazonaws.com/pigeons-install.sh | bash || {
     return 1
   }
-  bash "$tmp/install.sh" || {
-    rm -rf "$tmp"
-    return 1
-  }
-  rm -rf "$tmp"
 }
 
 mod_29_pigeons_check()
