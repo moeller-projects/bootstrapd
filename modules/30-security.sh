@@ -156,7 +156,6 @@ bantime = 3600
   ensure_package auditd needrestart
   ensure_service_enabled auditd
   ensure_service_running auditd
-  ensure_service_enabled needrestart
 
   if bootstrap_config_bool ENABLE_AUTO_UPDATES; then
     log_info "stage 2: unattended-upgrades (security only)"
