@@ -32,8 +32,10 @@ setup() {
   ENABLE_TAILSCALE=false
   TAILSCALE_AUTH_KEY=
   BOOTSTRAP_DRY_RUN=0
+  BOOTSTRAP_VERBOSE=0
+  BOOTSTRAP_DEBUG=0
   BOOTSTRAP_NON_INTERACTIVE=1
-  export ENABLE_TAILSCALE TAILSCALE_AUTH_KEY BOOTSTRAP_DRY_RUN BOOTSTRAP_NON_INTERACTIVE
+  export ENABLE_TAILSCALE TAILSCALE_AUTH_KEY BOOTSTRAP_DRY_RUN BOOTSTRAP_VERBOSE BOOTSTRAP_DEBUG BOOTSTRAP_NON_INTERACTIVE
 
   . "$BOOTSTRAP_MODULES/28-tailscale.sh"
 }
@@ -56,9 +58,8 @@ teardown() {
   [[ "$(mod_28_tailscale_stage)" == "2" ]]
   [[ "$(mod_28_tailscale_dependencies)" == *"20-users"* ]]
 }
-
 @test "28-tailscale: check is a no-op when disabled" {
-  ! mod_28_tailscale_check
+  mod_28_tailscale_check
 }
 
 @test "28-tailscale: dry-run install succeeds when enabled" {

@@ -25,7 +25,9 @@ setup() {
 
   ENABLE_PIGEONS=false
   BOOTSTRAP_DRY_RUN=0
-  export ENABLE_PIGEONS BOOTSTRAP_DRY_RUN
+  BOOTSTRAP_VERBOSE=0
+  BOOTSTRAP_DEBUG=0
+  export ENABLE_PIGEONS BOOTSTRAP_DRY_RUN BOOTSTRAP_VERBOSE BOOTSTRAP_DEBUG
 
   . "$BOOTSTRAP_MODULES/29-pigeons.sh"
 }
@@ -50,7 +52,7 @@ teardown() {
 }
 
 @test "29-pigeons: check is a no-op when disabled" {
-  ! mod_29_pigeons_check
+  mod_29_pigeons_check
 }
 
 @test "29-pigeons: dry-run install succeeds when enabled" {

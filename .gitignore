@@ -19,3 +19,6 @@ bootstrap.conf
 
 # Logs.
 *.log
+
+# Pipeline tool cache.
+pipelines/.tools/

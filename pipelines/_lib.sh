@@ -139,21 +139,26 @@ _install_shfmt()
 
 _install_bats()
 {
+  local prefix="$TOOLS_DIR/bats-prefix"
   local dest="$TOOLS_DIR/bats"
-  if [[ ! -x "$dest" ]]; then
-    step "installing bats into $TOOLS_DIR"
+  if [[ ! -x "$prefix/bin/bats" ]]; then
+    step "installing bats into $prefix"
     local tmp
     tmp="$(mktemp -d)"
     if curl -fsSL "https://github.com/bats-core/bats-core/archive/refs/heads/master.tar.gz" \
       -o "$tmp/bats.tgz"; then
       tar -xzf "$tmp/bats.tgz" -C "$tmp"
-      bash "$tmp/bats-core-master/install.sh" "$TOOLS_DIR/bats-prefix" >/dev/null
-      install -m 0755 "$TOOLS_DIR/bats-prefix/bin/bats" "$dest"
+      bash "$tmp/bats-core-master/install.sh" "$prefix" >/dev/null
     else
       die "bats download failed"
     fi
-    rm -rf "$tmp" "$TOOLS_DIR/bats-prefix"
+    rm -rf "$tmp"
   fi
+  cat >"$dest" <<EOF
+#!/usr/bin/env bash
+exec "$prefix/bin/bats" "\$@"
+EOF
+  chmod 0755 "$dest"
   printf '%s\n' "$dest"
 }
 
