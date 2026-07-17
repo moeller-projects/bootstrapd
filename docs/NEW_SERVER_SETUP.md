@@ -20,6 +20,18 @@ The first run is intentionally split into two stages:
 - Stage 1 creates the admin user, installs SSH keys, and configures sudo while leaving root login enabled.
 - Stage 2 only runs after you reconnect as the new admin user and confirms the handoff is safe before hardening SSH.
 
+## Fast path
+
+If you already have root access on the new host, this one-liner boots the first run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/moeller-projects/bootstrapd/main/kickstart.sh | bash
+```
+
+It installs git if needed, clones BootstrapX, seeds `bootstrap.conf` when missing, opens `$EDITOR`, and runs `./bootstrap.sh apply --safe`.
+
+It still stops for the config edit on first run and the admin handoff between stage 1 and stage 2.
+
 ## 1) Connect as root
 
 Start from the provider console or SSH:
